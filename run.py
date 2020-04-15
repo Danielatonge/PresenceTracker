@@ -3,6 +3,7 @@
 
 import sys
 
+from fbs_runtime.application_context.PyQt5 import ApplicationContext
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtWidgets import QLabel
 from PyQt5.QtWidgets import QWidget
@@ -201,7 +202,7 @@ def on_scroll(x, y, dx, dy):
 
 if __name__ == '__main__':
     # Create an instance of QApplication
-    app = QApplication(sys.argv)
+    appctxt = ApplicationContext()
     dlg = MainApp()
 
     # Show your application's GUI
@@ -210,4 +211,5 @@ if __name__ == '__main__':
     print("Running presence tracker")
 
     # Run your application's event loop (or main loop)
-    sys.exit(app.exec_())
+    exit_code = appctxt.app.exec_()      # 2. Invoke appctxt.app.exec_()
+    sys.exit(exit_code)
