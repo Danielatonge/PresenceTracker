@@ -34,8 +34,6 @@ class MHook(QThread):
         self.cursor = self.connection.cursor()
         
     def getconnection(self):
-    # up.uses_netloc.append("postgres")
-    # url = up.urlparse(os.environ["postgres://gcurtgfe:m0WvGKAPOvjJrnmRJNMvwSmhIX5WwAOO@drona.db.elephantsql.com:5432/gcurtgfe"])
         try:
             connection = psycopg2.connect(database='gcurtgfe',
                                     user='gcurtgfe',
@@ -156,12 +154,10 @@ class MainApp(QMainWindow):
         self.combobox.currentIndexChanged.connect(self.updateObjective)
         
         self.startbtn = QPushButton('Start')
-        self.startbtn.setCheckable(True)
         self.startbtn.clicked.connect(self.startbtnChangeState)
         self.startbtn.clicked.connect(self.startTracking)
 
         self.stopbtn = QPushButton('Stop')
-        self.stopbtn.setCheckable(True)
         self.stopbtn.setEnabled(False)
         self.stopbtn.clicked.connect(self.stopbtnChangeState)
         self.stopbtn.clicked.connect(self.stopTracking)
@@ -175,7 +171,8 @@ class MainApp(QMainWindow):
         return widget
 
     def _createMenu(self):
-        self.menu = self.menuBar().addMenu("&Menu")
+        pass
+        #self.menu = self.menuBar().addMenu("&Menu")
         #self.menu.addAction('&Exit', self.close)
 
     def _createToolBar(self):
