@@ -137,6 +137,7 @@ class MainApp(QMainWindow):
         layout = self.vboxWidget()
         self.setCentralWidget(layout)
         self.hook_thread = None
+        self.statusbartxt = "start tracking"
 
     def closeEvent(self, event):
         self.hook_thread.closeconnection()
@@ -154,13 +155,13 @@ class MainApp(QMainWindow):
         self.combobox.currentIndexChanged.connect(self.updateObjective)
         
         self.startbtn = QPushButton('Start')
-        self.startbtn.clicked.connect(self.startbtnChangeState)
-        self.startbtn.clicked.connect(self.startTracking)
+        self.startbtn.pressed.connect(self.startbtnChangeState)
+        self.startbtn.pressed.connect(self.startTracking)
 
         self.stopbtn = QPushButton('Stop')
         self.stopbtn.setEnabled(False)
-        self.stopbtn.clicked.connect(self.stopbtnChangeState)
-        self.stopbtn.clicked.connect(self.stopTracking)
+        self.stopbtn.pressed.connect(self.stopbtnChangeState)
+        self.stopbtn.pressed.connect(self.stopTracking)
 
         layout.addWidget(self.combobox)
         layout.addWidget(self.startbtn)
@@ -181,8 +182,12 @@ class MainApp(QMainWindow):
         #tools.addAction('Exit', self.close)
 
     def _createStatusBar(self):
-        status = QStatusBar()
-        self.setStatusBar(status)
+        self.status = QStatusBar()
+        self.status.showMessage("start tracking")
+        self.setStatusBar(self.status)
+
+    def updateStatusBar(self):
+        self.status.showMessage(self.statusbartxt)
 
     def startbtnChangeState(self):
         if self.startbtn.isEnabled():
@@ -196,19 +201,25 @@ class MainApp(QMainWindow):
         
     def updateObjective(self):
         self.objective = self.combobox.currentText().lower()
-        status = QStatusBar()
-        status.showMessage(self.objective)
-        self.setStatusBar(status)
+        self.statusbartxt = self.objective
+        self.updateStatusBar()
+        
 
     def startTracking(self):
+        self.combobox.setEnabled(False)
         self.hook_thread = MHook(self)
         self.hook_thread.objective = self.objective
         self.hook_thread.connect()
         self.hook_thread.start()
+        self.statusbartxt = 'Process started'
+        self.updateStatusBar()
     
     def stopTracking(self):
         self.hook_thread.quit()
         self.hook_thread.commitChanges()
+        self.combobox.setEnabled(True)
+        self.statusbartxt = 'Process stop'
+        self.updateStatusBar()
 
 
 if __name__ == '__main__':
