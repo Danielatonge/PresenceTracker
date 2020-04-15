@@ -1,7 +1,117 @@
 # Filename: run.py
 # Author: Daniel Atonge
 
+from PyQt5.QtCore import QThread
+
+# Imports for writing to the remote server
+import os
+import psycopg2
+
+# Imports for writing to the remote server
+from pynput.keyboard import Key, Listener as keyboardlistener
+from pynput.mouse import Listener as mouselistener
+import time
+
+class MHook(QThread):
+    def __init__(self, parent=None):
+        QThread.__init__(self, parent)
+        self.starttime = time.time()
+        self.idlelist = list()
+        self.objective = 'development'
+        self.connection = None
+        self.cursor = None
+        
+    
+    # Returns the current time
+    def getcurrenttime(self):
+        return time.time()
+
+    def run(self):
+        self.Listen()
+
+    def connect(self):
+        self.connection = self.getconnection()
+        self.cursor = self.connection.cursor()
+        
+    def getconnection(self):
+    # up.uses_netloc.append("postgres")
+    # url = up.urlparse(os.environ["postgres://gcurtgfe:m0WvGKAPOvjJrnmRJNMvwSmhIX5WwAOO@drona.db.elephantsql.com:5432/gcurtgfe"])
+        try:
+            connection = psycopg2.connect(database='gcurtgfe',
+                                    user='gcurtgfe',
+                                    password= 'm0WvGKAPOvjJrnmRJNMvwSmhIX5WwAOO',
+                                    host='drona.db.elephantsql.com',
+                                    port= 5432
+                                    )
+            connection.autocommit = True
+        except (Exception, psycopg2.Error) as error :
+            print ("Error while connecting to PostgreSQL", error)
+        return connection
+
+    def commitChanges(self):
+        self.connection.commit()
+        
+
+    def closeconnection(self):
+        #closing database connection.
+        if(self.connection):
+            self.connection.close()
+            print("Connection is closed")
+
+    def insert(self):
+        all_docs = [{'idletime': doc} for doc in self.idlelist]
+        query = "INSERT INTO {}(idletime) Values ".format(self.objective)
+        try:
+            self.cursor.executemany( query + "(%(idletime)s);", all_docs)
+        except Exception as e:
+            print(e)
+        self.idlelist.clear()
+
+    # Keyboard
+    def on_release(self, key):
+        idletime = round(time.time() - self.starttime, 1)
+        if (idletime > 0.0):
+            self.idlelist.append(idletime)
+            print(str(key))
+        if (len(self.idlelist) > 100):
+            self.insert()
+        self.starttime = self.getcurrenttime()
+
+    # Mouse
+    def on_move(self, x, y):
+        idletime = round(time.time() - self.starttime, 1)
+        if (idletime > 0.0):
+            self.idlelist.append(idletime)
+        if (len(self.idlelist) > 100):
+            self.insert()
+        self.starttime = self.getcurrenttime()
+
+    def on_click(self, x, y, button, pressed):
+        idletime = round(time.time() - self.starttime, 1)
+        if (idletime > 0.0):
+            self.idlelist.append(idletime)
+        if (len(self.idlelist) > 5):
+            print(self.idlelist)
+            self.insert()
+        self.starttime = self.getcurrenttime()
+
+    def on_scroll(self, x, y, dx, dy):
+        idletime = round(time.time() - self.starttime, 1)
+        if (idletime > 0.0):
+            self.idlelist.append(idletime)
+        if (len(self.idlelist) > 100):
+            self.insert()
+        self.starttime = self.getcurrenttime()
+
+    def Listen(self):
+            # Collect mouse events
+        with mouselistener(on_move=self.on_move,on_click=self.on_click,on_scroll=self.on_scroll) as listener:
+            # Collect keyboard events
+            with keyboardlistener(on_release=self.on_release) as listener:
+                listener.join()
+
 import sys
+#from MHook import MHook
 
 from fbs_runtime.application_context.PyQt5 import ApplicationContext
 from PyQt5.QtWidgets import QApplication
@@ -13,51 +123,6 @@ from PyQt5.QtWidgets import QComboBox
 from PyQt5.QtWidgets import QMainWindow
 from PyQt5.QtWidgets import QStatusBar
 from PyQt5.QtWidgets import QToolBar
-
-# Imports for writing to the remote server
-from pynput.keyboard import Key, Listener as keyboardlistener
-from pynput.mouse import Listener as mouselistener
-import time
-import csv
-
-# Imports for writing to the remote server
-import os
-import urllib.parse as up
-import psycopg2
-
-objective = 'development'
-
-def getconnection():
-    # up.uses_netloc.append("postgres")
-    # url = up.urlparse(os.environ["postgres://gcurtgfe:m0WvGKAPOvjJrnmRJNMvwSmhIX5WwAOO@drona.db.elephantsql.com:5432/gcurtgfe"])
-    try:
-        connection = psycopg2.connect(database='gcurtgfe',
-                                user='gcurtgfe',
-                                password= 'm0WvGKAPOvjJrnmRJNMvwSmhIX5WwAOO',
-                                host='drona.db.elephantsql.com',
-                                port= 5432
-                                )
-    except (Exception, psycopg2.Error) as error :
-        print ("Error while connecting to PostgreSQL", error)
-    return connection
-
-def closeconnection(connection, cursor):
-    #closing database connection.
-    if(connection):
-        connection.commit()
-        cursor.close()
-        connection.close()
-        print("PostgreSQL connection is closed")
-
-def insert(cursor, documents, objective='development'):
-    query = "INSERT INTO {}(idletime) Values ".format(objective)
-    for document in documents:
-        cursor.execute(query + '({});'.format(document))
-    documents.clear()
-
-# Global variables
-starttime = time.time()
-idlelist = list()
 
 
 class MainApp(QMainWindow):
@@ -73,14 +138,16 @@ class MainApp(QMainWindow):
 
         layout = self.vboxWidget()
         self.setCentralWidget(layout)
-        # Collect mouse events
-        self.mlistener = mouselistener( on_move=on_move, on_click=on_click, on_scroll=on_scroll )
+        self.hook_thread = None
 
-        # Collect keyboard events
-        self.klistener = keyboardlistener( on_release=on_release )
-    
+    def closeEvent(self, event):
+        self.hook_thread.closeconnection()
+        event.accept()
+
     def vboxWidget(self):
         layout = QVBoxLayout()
+
+        self.objective = 'development'
 
         self.combobox = QComboBox()
         self.combobox.addItem('Development')
@@ -117,9 +184,7 @@ class MainApp(QMainWindow):
         #tools.addAction('Exit', self.close)
 
     def _createStatusBar(self):
-        global objective
         status = QStatusBar()
-        status.showMessage(objective)
         self.setStatusBar(status)
 
     def startbtnChangeState(self):
@@ -133,75 +198,25 @@ class MainApp(QMainWindow):
             self.startbtn.setEnabled(True)
         
     def updateObjective(self):
-        global objective
-        objective = self.combobox.currentText().lower()
+        self.objective = self.combobox.currentText().lower()
         status = QStatusBar()
-        status.showMessage(objective)
+        status.showMessage(self.objective)
         self.setStatusBar(status)
 
     def startTracking(self):
-        global connection, cursor
-        connection = getconnection()
-        cursor = connection.cursor()
-
-        self.mlistener.start()
-        #self.klistener.start()
+        self.hook_thread = MHook(self)
+        self.hook_thread.objective = self.objective
+        self.hook_thread.connect()
+        self.hook_thread.start()
     
     def stopTracking(self):
-        global connection, cursor
-        self.mlistener.stop()
-        #self.klistener.stop()
-        closeconnection(connection, cursor)
-        connection = None
-        cursor = None
-
-
-# Returns the current time
-def getcurrenttime():
-    return time.time()
-
-# Keyboard
-def on_release(key):
-    global starttime, idlelist, cursor, objective
-    idletime = round(time.time() - starttime, 1)
-    if (idletime > 0.0):
-        idlelist.append(idletime)
-    if (len(idlelist) > 100):
-        insert(cursor, idlelist, objective)
-    starttime = getcurrenttime()
-
-# Mouse
-def on_move(x, y):
-    global starttime, idlelist, cursor, objective
-    idletime = round(time.time() - starttime, 1)
-    if (idletime > 0.0):
-        idlelist.append(idletime)
-    if (len(idlelist) > 100):
-        insert(cursor, idlelist, objective)
-    starttime = getcurrenttime()
-
-def on_click(x, y, button, pressed):
-    global starttime, idlelist, cursor, objective
-    idletime = round(time.time() - starttime, 1)
-    if (idletime > 0.0):
-        idlelist.append(idletime)
-        print(idletime)
-    if (len(idlelist) > 5):
-        insert(cursor, idlelist, objective)
-    starttime = getcurrenttime()
-
-def on_scroll(x, y, dx, dy):
-    global starttime, idlelist, cursor, objective
-    idletime = round(time.time() - starttime, 1)
-    if (idletime > 0.0):
-        idlelist.append(idletime)
-    if (len(idlelist) > 100):
-        insert(cursor, idlelist, objective)
-    starttime = getcurrenttime()
+        self.hook_thread.quit()
+        self.hook_thread.commitChanges()
 
 
 if __name__ == '__main__':
     # Create an instance of QApplication
+    #appctxt = QApplication(sys.argv)
     appctxt = ApplicationContext()
     dlg = MainApp()
 
@@ -211,4 +226,6 @@ if __name__ == '__main__':
     print("Running presence tracker")
 
     # Run your application's event loop (or main loop)
-    appctxt.app.exec_()      # 2. Invoke appctxt.app.exec_()
+    exit_code = appctxt.app.exec_()      # 2. Invoke appctxt.app.exec_()
+    sys.exit(exit_code)
+    #sys.exit(appctxt.exec_())
