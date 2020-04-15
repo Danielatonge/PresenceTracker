@@ -1,0 +1,6 @@
+{
+    "app_name": "PresenceTracker",
+    "author": "Daniel Atonge",
+    "main_module": "src/main/python/main.py",
+    "version": "0.0.0"
+}
