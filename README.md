@@ -42,12 +42,12 @@ executable:
 
     fbs freeze
 
-This creates the folder `target/Tutorial`. You can copy this directory to any
+This creates the folder `target/PresenceTracker`. You can copy this directory to any
 other computer (with the same OS as yours) and run the app there!
 
 ## Creating an installer
-On Windows, this would be an executable called `TutorialSetup.exe`.
-On Mac, mountable disk images such as `Tutorial.dmg` are commonly used.
+On Windows, this would be an executable called `PresenceTracker.exe`.
+On Mac, mountable disk images such as `PresenceTracker.dmg` are commonly used.
 On Linux, `.deb` files are common on Ubuntu, `.rpm` on Fedora / CentOS, and
 `.pkg.tar.xz` on Arch.
 
@@ -63,13 +63,13 @@ Before you can use the `installer` command on Windows, please install
 [NSIS](http://nsis.sourceforge.net/Main_Page) and add its installation directory
 to your `PATH` environment variable.
 
-The installer is created at `target/TutorialSetup.exe`. It lets your users pick
+The installer is created at `target/PresenceTracker.exe`. It lets your users pick
 the installation directory and adds your app to the Start Menu. It also creates
 an entry in Windows' list of installed programs. Your users can use this to
 uninstall your app. 
 
 ### Mac installer
-On Mac, the `installer` command generates the file `target/Tutorial.dmg`. 
+On Mac, the `installer` command generates the file `target/PresenceTracker.dmg`. 
 
 To install your app, your users simply drag its icon to the _Applications_
 folder.
@@ -81,5 +81,5 @@ On Linux, the `installer` command requires that you have
 install it.
 
 Depending on your Linux distribution, fbs creates the installer at 
-`target/Tutorial.deb`, `...pkg.tar.xz` or `...rpm`. Users can use these
+`target/PresenceTracker.deb`, `...pkg.tar.xz` or `...rpm`. Users can use these
 files to install your app with their respective package manager.
